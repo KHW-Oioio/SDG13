@@ -117,3 +117,14 @@ def plot_heatmap(G, results_df):
     values = results_df.mean().reindex(G.nodes())
     nx.draw_networkx(G, pos=nx.spring_layout(G), node_size=values*1000, with_labels=True, ax=ax)
     return fig
+
+df = load_weather_data()
+
+if df.empty:
+    st.error("날씨 데이터가 없습니다. API 키 확인 및 데이터 생성 과정을 점검하세요.")
+    region_list = []
+else:
+    region_list = df.columns.drop('date')
+
+region = st.sidebar.selectbox("지역(시/도)", region_list)
+
