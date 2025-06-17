@@ -3,70 +3,59 @@ import requests
 import pandas as pd
 from datetime import datetime, timedelta
 
-# ——————————————
-# 1. OpenWeatherMap 날씨 데이터 수집 예제
-# ——————————————
-def fetch_weather_openweathermap(api_key, city="Seoul", days=5):
+def load_weather_data(api_key=None, city="Seoul", days=5, filepath='data/weather.csv'):
     """
-    OpenWeatherMap에서 최근 days일간의 일일 평균 기온 데이터를 가져와 CSV로 저장합니다.
+    weather.csv가 없거나 비어있으면 OpenWeatherMap API에서 데이터를 받아와 저장 후 로드합니다.
+    API 호출 실패시 빈 DataFrame 반환합니다.
     """
-    records = []
-    now = datetime.utcnow()
-    for i in range(days):
-        dt = now - timedelta(days=i)
-        timestamp = int(dt.replace(hour=12, minute=0, second=0).timestamp())
-        url = (
-            f"https://api.openweathermap.org/data/2.5/onecall/timemachine"
-            f"?lat=37.5665&lon=126.9780&dt={timestamp}"
-            f"&units=metric&appid={api_key}"
-        )
-        resp = requests.get(url)
-        data = resp.json()
-        temps = [h['temp'] for h in data.get('hourly', [])]
-        records.append({
-            'date': dt.strftime("%Y-%m-%d"),
-            'avg_temp': sum(temps) / len(temps) if temps else None
-        })
+    if api_key is None:
+        api_key = os.getenv('OWM_API_KEY', '')
 
-    df = pd.DataFrame(records)
-    df.to_csv('data/weather.csv', index=False)
-    return df
+    def fetch_weather_openweathermap():
+        records = []
+        now = datetime.utcnow()
+        for i in range(days):
+            dt = now - timedelta(days=i)
+            timestamp = int(dt.replace(hour=12, minute=0, second=0).timestamp())
+            url = (
+                f"https://api.openweathermap.org/data/2.5/onecall/timemachine"
+                f"?lat=37.5665&lon=126.9780&dt={timestamp}"
+                f"&units=metric&appid={api_key}"
+            )
+            resp = requests.get(url)
+            if resp.status_code != 200:
+                print(f"API 요청 실패: 상태 코드 {resp.status_code}")
+                continue
+            data = resp.json()
+            temps = [h['temp'] for h in data.get('hourly', []) if 'temp' in h]
+            avg_temp = sum(temps) / len(temps) if temps else None
+            records.append({
+                'date': dt.strftime("%Y-%m-%d"),
+                'avg_temp': avg_temp
+            })
 
-# ——————————————
-# 2. 기상청 태풍 정보 API 예제
-# ——————————————
-def fetch_typhoon_kma(service_key, from_date, to_date):
-    """
-    기상청 태풍정보(Open API)에서 지정 기간 태풍 데이터를 가져와 CSV로 저장합니다.
-    """
-    url = "http://apis.data.go.kr/1360000/TyphoonInfoService/getTyphoonInfo"
-    params = {
-        'ServiceKey': service_key,
-        'pageNo': '1',
-        'numOfRows': '100',
-        'dataType': 'JSON',
-        'fromTmFc': from_date,  # YYYYMMDD
-        'toTmFc': to_date       # YYYYMMDD
-    }
-    resp = requests.get(url, params=params)
-    items = resp.json()['response']['body'].get('items', {}).get('item', [])
-    df = pd.DataFrame(items)
-    df.to_csv('data/disaster.csv', index=False)
-    return df
+        if records:
+            df = pd.DataFrame(records)
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            df.to_csv(filepath, index=False)
+            print(f"날씨 데이터를 '{filepath}'에 저장했습니다.")
+            return df
+        else:
+            print("날씨 데이터를 가져오지 못했습니다.")
+            return pd.DataFrame(columns=['date', 'avg_temp'])
 
-# ——————————————
-# 3. load functions for Streamlit app
-# ——————————————
-def load_weather_data():
-    api_key = os.getenv('OWM_API_KEY', '')
-    if not os.path.exists('data/weather.csv'):
-        fetch_weather_openweathermap(api_key)
-    return pd.read_csv('data/weather.csv', parse_dates=['date'])
+    # 파일이 없거나 빈 파일이면 데이터 수집 시도
+    if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+        print(f"'{filepath}' 파일이 없거나 비어있어서 API에서 데이터를 불러옵니다.")
+        return fetch_weather_openweathermap()
 
-def load_disaster_data():
-    service_key = os.getenv('KMA_TY_SERVICE_KEY', '')
-    if not os.path.exists('data/disaster.csv'):
-        today = datetime.now().strftime("%Y%m%d")
-        fetch_typhoon_kma(service_key, today, today)
-    return pd.read_csv('data/disaster.csv')
-
+    # 파일이 존재하면 읽기
+    try:
+        df = pd.read_csv(filepath, parse_dates=['date'])
+        if df.empty:
+            print(f"'{filepath}' 파일이 비어있습니다. API에서 데이터를 불러옵니다.")
+            return fetch_weather_openweathermap()
+        return df
+    except pd.errors.EmptyDataError:
+        print(f"'{filepath}' 파일 읽기 중 오류 발생. API에서 데이터를 불러옵니다.")
+        return fetch_weather_openweathermap()
