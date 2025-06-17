@@ -56,3 +56,11 @@ def load_weather_data(api_key=None, city="Seoul", days=5, filepath='data/weather
         print(f"'{filepath}' 파일 읽기 실패(EmptyDataError). API에서 데이터를 받아옵니다.")
         return fetch_weather_openweathermap()
 
+df = load_weather_data()
+if df.empty:
+    st.error("날씨 데이터가 없습니다. API 호출 또는 파일 상태를 확인하세요.")
+    region_list = []
+else:
+    region_list = df.columns.drop('date')
+
+region = st.sidebar.selectbox("지역(시/도)", region_list)
