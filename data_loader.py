@@ -4,10 +4,6 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 def load_weather_data(api_key=None, city="Seoul", days=5, filepath='data/weather.csv'):
-    """
-    weather.csv가 없거나 비어있으면 OpenWeatherMap API에서 데이터를 받아와 저장 후 로드합니다.
-    API 호출 실패시 빈 DataFrame 반환합니다.
-    """
     if api_key is None:
         api_key = os.getenv('OWM_API_KEY', '')
 
@@ -44,18 +40,19 @@ def load_weather_data(api_key=None, city="Seoul", days=5, filepath='data/weather
             print("날씨 데이터를 가져오지 못했습니다.")
             return pd.DataFrame(columns=['date', 'avg_temp'])
 
-    # 파일이 없거나 빈 파일이면 데이터 수집 시도
+    # 파일 없거나 크기가 0이면 새로 받기
     if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
-        print(f"'{filepath}' 파일이 없거나 비어있어서 API에서 데이터를 불러옵니다.")
+        print(f"'{filepath}' 파일이 없거나 비어있어 API에서 데이터를 받아옵니다.")
         return fetch_weather_openweathermap()
 
-    # 파일이 존재하면 읽기
+    # 파일 존재하면 읽되, EmptyDataError 방어
     try:
         df = pd.read_csv(filepath, parse_dates=['date'])
         if df.empty:
-            print(f"'{filepath}' 파일이 비어있습니다. API에서 데이터를 불러옵니다.")
+            print(f"'{filepath}' 파일이 비어있습니다. API에서 데이터를 받아옵니다.")
             return fetch_weather_openweathermap()
         return df
     except pd.errors.EmptyDataError:
-        print(f"'{filepath}' 파일 읽기 중 오류 발생. API에서 데이터를 불러옵니다.")
+        print(f"'{filepath}' 파일 읽기 실패(EmptyDataError). API에서 데이터를 받아옵니다.")
         return fetch_weather_openweathermap()
+
