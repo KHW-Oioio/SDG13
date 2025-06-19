@@ -1,19 +1,25 @@
-import numpy as np
-import networkx as nx
-import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import streamlit as st
 
-def run_monte_carlo(base_damage=100, mean_temp=2.0, std_temp=0.3, iterations=1000):
-    np.random.seed(42)
-    temp_increases = np.random.normal(loc=mean_temp, scale=std_temp, size=iterations)
-    damage_results = base_damage * (1 + 0.2 * temp_increases)
-    return damage_results
+def plot_line_chart(df, x_col, y_col, title):
+    fig, ax = plt.subplots()
+    ax.plot(df[x_col], df[y_col], marker='o')
+    ax.set_title(title)
+    ax.set_xlabel(x_col)
+    ax.set_ylabel(y_col)
+    st.pyplot(fig)
 
-def build_graph(disaster_df):
-    G = nx.Graph()
-    for _, row in disaster_df.iterrows():
-        G.add_node(row["region"], damage=row["damage_amount_hundred_million_won"])
-    return G
+def plot_pie_chart(series, title):
+    fig, ax = plt.subplots()
+    ax.pie(series, labels=series.index, autopct='%1.1f%%', startangle=90)
+    ax.set_title(title)
+    st.pyplot(fig)
 
-def get_top_regions(disaster_df, top_n=5):
-    grouped = disaster_df.groupby("region")["damage_amount_hundred_million_won"].sum()
-    return grouped.sort_values(ascending=False).head(top_n)
+def plot_histogram(data, title):
+    fig, ax = plt.subplots()
+    ax.hist(data, bins=30, color='skyblue', edgecolor='black')
+    ax.set_title(title)
+    ax.set_xlabel("예측 피해액")
+    ax.set_ylabel("빈도")
+    st.pyplot(fig)
