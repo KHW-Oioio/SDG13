@@ -1,5 +1,6 @@
-typhoon_name,date,max_wind_speed,pressure
-Nangka,2023-09-01,150,940
-Saola,2023-09-10,140,945
-Haikui,2023-09-15,130,950
+year,region,damage_amount_hundred_million_won,deaths
+2020,RegionA,1.5,2
+2021,RegionB,0.8,0
+2022,RegionC,2.1,1
+2022,RegionA,1.2,0
 
